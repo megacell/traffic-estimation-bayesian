@@ -1,7 +1,7 @@
 Bayesian inference for traffic estimation
 ======
 
-Dependences
+Dependencies
 ------
 
     brew install gfortran
