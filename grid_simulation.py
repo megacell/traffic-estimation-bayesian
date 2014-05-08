@@ -8,10 +8,10 @@ import grid_model as model
 
 # run simulation
 A = MCMC(model)
-A.sample(iter=10000)
+A.sample(iter=50000)
 plot(A,suffix='-grid')
 
-# 
+# construct solution vector
 x_ans = sorted([(i,list(A.stats()[i]['mean'])) for i in A.stats()], key=lambda x: x[0])
 [x[1].append(1-sum(x[1])) for x in x_ans]
 x_ans = list(chain(*[x[1] for x in x_ans]))

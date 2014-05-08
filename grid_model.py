@@ -9,7 +9,8 @@ def dot(a,b):
 
 # load data and change variable names
 # data = loadmat('data/2_3_3_1_20140421T151732_1_small_graph_OD_dense.mat')
-data = loadmat('data/3_3_3_1_20140421T173515_5_small_graph_OD.mat')
+# data = loadmat('data/3_3_3_1_20140421T173515_5_small_graph_OD.mat')
+data = loadmat('data/4_6_3_1_20140421T155253_1_small_graph_OD.mat')
 sparse = True
 A = data['phi']
 b_obs = data['f']
@@ -17,7 +18,7 @@ x_true = data['real_a']
 block_sizes = data['block_sizes']
 
 if sparse == True:
-    alpha = 0.2
+    alpha = 0.3
 else:
     alpha = 1
 
