@@ -1,4 +1,5 @@
-from pymc import DiscreteUniform, Exponential, deterministic, Poisson, Uniform, stochastic, Bernoulli, Normal, MCMC, Beta, Gamma, Dirichlet
+from pymc import DiscreteUniform, Exponential, deterministic, Poisson, \
+        Uniform, stochastic, Bernoulli, Normal, MCMC, Beta, Gamma, Dirichlet
 import numpy as np
 from scipy.io import loadmat
 from itertools import chain
