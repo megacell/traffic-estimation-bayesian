@@ -5,7 +5,7 @@ Dependencies
 ------
 
     brew install gfortran
-    pip install -r requirements
+    pip install -r requirements.txt
 
 Usage
 ------

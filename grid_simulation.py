@@ -67,7 +67,7 @@ if __name__ == "__main__":
         errors_b = []
         errors_x = []
         A.sample(iter=100)
-        A, logp, errors_b, errors_x = sample(A,iters=100,logp=logp,\
+        A, logp, errors_b, errors_x = sample(A,iters=1000,logp=logp,\
                 errors_b=errors_b,errors_x=errors_x)
         save(model,logp,errors_b,errors_x)
     # A.sample(iter=50000)
@@ -84,4 +84,7 @@ if __name__ == "__main__":
     print "norm(x-x*): %s" % error_x
     print np.vstack((np.array(x_ans),model.x_true[:,0]))
  
+    A, logp, errors_b, errors_x = sample(A,iters=1000,logp=logp,\
+            errors_b=errors_b,errors_x=errors_x)
+    save(model,logp,errors_b,errors_x)
     plot(logp, errors_b, errors_x)
