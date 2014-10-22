@@ -17,6 +17,21 @@ def getX(A):
     x_ans = list(chain(*[x[1] for x in x_ans]))
     return x_ans
 
+def error(trace,A,x_true,b_obs):
+    x_blocks = None
+    for varname in sorted(trace.varnames):
+        # flatten the trace and normalize
+        x_block = np.array([x/sum(x) for x in trace.get_values(varname)])
+        if x_blocks is not None:
+            x_blocks = np.hstack((x_blocks, x_block))
+        else:
+            x_blocks = x_block
+    # compute link flow and route flow error
+    n = x_blocks.shape[0]
+    error_b = np.linalg.norm(A.dot(x_blocks.T) - np.tile(b_obs,(1,n)),axis=0)
+    error_x = np.linalg.norm(np.tile(x_true,(1,n))-x_blocks.T,axis=0)
+    return error_b, error_x
+
 def sample(A,iters=100,logp=[],errors_b=[],errors_x=[]):
     for i in range(iters):
         A.sample(iter=1)
@@ -42,20 +57,15 @@ def sample(A,iters=100,logp=[],errors_b=[],errors_x=[]):
  
     return A, logp, errors_b, errors_x
 
-def plot(logp, errors_b, errors_x):
-    plt.figure(1)
-    plt.subplot(221)
-    plt.plot(range(len(logp)),logp)
-    plt.title('Log likelihood')
-    plt.ylabel('Log likelihood')
-    plt.xlabel('Sample')
-    plt.subplot(222)
-    plt.plot(range(len(errors_b)),errors_b)
+def plot(error_b, error_x):
+    plt.figure()
+    plt.subplot(121)
+    plt.plot(range(len(error_b)),error_b)
     plt.title('Objective')
     plt.ylabel('norm(Ax-b)')
     plt.xlabel('Sample')
-    plt.subplot(223)
-    plt.plot(range(len(errors_x)),errors_x)
+    plt.subplot(122)
+    plt.plot(range(len(error_x)),error_x)
     plt.title('Recovery')
     plt.ylabel('norm(x-x*)')
     plt.xlabel('Sample')
@@ -82,16 +92,32 @@ if __name__ == "__main__":
     #     errors_b = []
     #     errors_x = []
     #     A.sample(iter=100)
+    import time
     with model.model:
+        n = 10000
+        START = time.time()
         start = pm.find_MAP()
-        trace = pm.sample(100000,pm.HamiltonianMC(),start)
-        # trace = pm.sample(100000,pm.Metropolis(),start)
-        # trace = pm.sample(300,pm.Slice(),start)
-        fig = pm.traceplot(trace)
-        plt.show()
+        print 'Time to initialize: %ds' % (time.time()-START)
 
-    import ipdb
-    ipdb.set_trace()
+        # START = time.time()
+        # trace = pm.sample(n,pm.Metropolis(),start)
+        # print 'Time to sample (MH): %ds' % (time.time()-START)
+
+        # START = time.time()
+        # trace = pm.sample(n,pm.Slice(),start)
+        # print 'Time to sample (Slice): %ds' % (time.time()-START)
+
+        START = time.time()
+        trace = pm.sample(n,pm.HamiltonianMC(),start)
+        print 'Time to sample (HMC): %ds' % (time.time()-START)
+
+        error_b, error_x = error(trace1,model.A,model.x_true,model.b_obs)
+
+        fig = pm.traceplot(trace)
+        # fig = pm.traceplot(trace2)
+        # fig = pm.traceplot(trace3)
+        plot(error_b,error_x)
+        # plt.show()
 
     # A.sample(iter=50000)
     # plot(A,suffix='-grid')
