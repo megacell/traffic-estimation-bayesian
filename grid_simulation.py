@@ -1,5 +1,5 @@
-import pymc
-from pymc import MCMC
+import pymc as pm
+from pymc import HamiltonianMC as MC
 # from pymc.Matplot import plot
 import numpy as np
 from itertools import chain
@@ -66,26 +66,38 @@ def save(fmetaname,logp,errors_b,errors_x):
         pickle.dump((logp,errors_b,errors_x), f)
 
 if __name__ == "__main__":
-    fname = '%s.pickle' % model.fname
-    fmetaname = '%s_meta.pickle' % model.fname
-    try:
-        # load previous simulation
-        db = pymc.database.pickle.load(fname)
-        A = MCMC(model, db=db)
-        with open(fmetaname,'r') as f:
-            logp, errors_b, errors_x = pickle.load(f)
-    except IOError:
-        # run new simulation
-        A = MCMC(model, db='pickle', dbname=fname)
-        logp = []
-        errors_b = []
-        errors_x = []
-        A.sample(iter=100)
+    # fname = '%s.pickle' % model.fname
+    # fmetaname = '%s_meta.pickle' % model.fname
+
+    # try:
+    #     # load previous simulation
+    #     db = pm.database.pickle.load(fname)
+    #     A = MC(model, db=db)
+    #     with open(fmetaname,'r') as f:
+    #         logp, errors_b, errors_x = pickle.load(f)
+    # except IOError:
+    #     # run new simulation
+    #     A = MC(model, db='pickle', dbname=fname)
+    #     logp = []
+    #     errors_b = []
+    #     errors_x = []
+    #     A.sample(iter=100)
+    with model.model:
+        start = pm.find_MAP()
+        trace = pm.sample(100000,pm.HamiltonianMC(),start)
+        # trace = pm.sample(100000,pm.Metropolis(),start)
+        # trace = pm.sample(300,pm.Slice(),start)
+        fig = pm.traceplot(trace)
+        plt.show()
+
+    import ipdb
+    ipdb.set_trace()
+
     # A.sample(iter=50000)
     # plot(A,suffix='-grid')
- 
-    A, logp, errors_b, errors_x = sample(A,iters=300,logp=logp,\
-            errors_b=errors_b,errors_x=errors_x)
-    save(fmetaname,logp,errors_b,errors_x)
 
-    plot(logp, errors_b, errors_x)
+    # A, logp, errors_b, errors_x = sample(A,iters=300,logp=logp,\
+    #         errors_b=errors_b,errors_x=errors_x)
+    # save(fmetaname,logp,errors_b,errors_x)
+
+    # plot(logp, errors_b, errors_x)
