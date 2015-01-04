@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 import cPickle as pickle
 
 # load model
-import grid_model as model
+from grid_model import create_model
 
 # construct solution vector
 def getX(A):
@@ -28,8 +28,8 @@ def error(trace,A,x_true,b_obs):
             x_blocks = x_block
     # compute link flow and route flow error
     n = x_blocks.shape[0]
-    error_b = np.linalg.norm(A.dot(x_blocks.T) - np.tile(b_obs,(1,n)),axis=0)
-    error_x = np.linalg.norm(np.tile(x_true,(1,n))-x_blocks.T,axis=0)
+    error_b = np.linalg.norm(A.dot(x_blocks.T) - np.tile(b_obs,(n,1)).T,axis=0)
+    error_x = np.linalg.norm(np.tile(x_true,(n,1)).T-x_blocks.T,axis=0)
     return error_b, error_x
 
 def sample(A,iters=100,logp=[],errors_b=[],errors_x=[]):
@@ -75,7 +75,39 @@ def save(fmetaname,logp,errors_b,errors_x):
     with open(fmetaname,'wb') as f:
         pickle.dump((logp,errors_b,errors_x), f)
 
+def MCMC(model):
+    import time
+    with model:
+        n = 6000
+        START = time.time()
+        start = pm.find_MAP()
+        print 'Time to initialize: %ds' % (time.time()-START)
+
+        START = time.time()
+        trace = pm.sample(n,pm.Metropolis(),start)
+        print 'Time to sample (MH): %ds' % (time.time()-START)
+
+        # START = time.time()
+        # trace = pm.sample(n,pm.Slice(),start)
+        # print 'Time to sample (Slice): %ds' % (time.time()-START)
+
+        # START = time.time()
+        # trace = pm.sample(n,pm.HamiltonianMC(),start)
+        # print 'Time to sample (HMC): %ds' % (time.time()-START)
+
+        error_b, error_x = error(trace,model.data.A,model.data.x_true,model.data.b_obs)
+
+        fig = pm.traceplot(trace)
+        plot(error_b,error_x)
+        # plt.show()
+    return trace
+
 if __name__ == "__main__":
+    fname = 'data/2_3_3_1_20140421T151732_1_small_graph_OD_dense.mat'
+    sparse = False
+    model = create_model(fname,sparse)
+    trace = MCMC(model)
+
     # fname = '%s.pickle' % model.fname
     # fmetaname = '%s_meta.pickle' % model.fname
 
@@ -92,32 +124,6 @@ if __name__ == "__main__":
     #     errors_b = []
     #     errors_x = []
     #     A.sample(iter=100)
-    import time
-    with model.model:
-        n = 10000
-        START = time.time()
-        start = pm.find_MAP()
-        print 'Time to initialize: %ds' % (time.time()-START)
-
-        # START = time.time()
-        # trace = pm.sample(n,pm.Metropolis(),start)
-        # print 'Time to sample (MH): %ds' % (time.time()-START)
-
-        # START = time.time()
-        # trace = pm.sample(n,pm.Slice(),start)
-        # print 'Time to sample (Slice): %ds' % (time.time()-START)
-
-        START = time.time()
-        trace = pm.sample(n,pm.HamiltonianMC(),start)
-        print 'Time to sample (HMC): %ds' % (time.time()-START)
-
-        error_b, error_x = error(trace1,model.A,model.x_true,model.b_obs)
-
-        fig = pm.traceplot(trace)
-        # fig = pm.traceplot(trace2)
-        # fig = pm.traceplot(trace3)
-        plot(error_b,error_x)
-        # plt.show()
 
     # A.sample(iter=50000)
     # plot(A,suffix='-grid')
