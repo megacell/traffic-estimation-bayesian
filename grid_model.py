@@ -124,11 +124,12 @@ def create_model(data,sparse,full=False,OD=False,CP=False,EQ='OD'):
     if OD and CP:
         model.data = type('data',(object,),dict(A=A,b_obs=b_obs,x_true=x_true,
                                                 T=T,d=d_obs,U=U,f=f_obs,
-                                                sparse=sparse,alpha=alpha))
+                                                sparse=sparse,alpha=alpha,
+                                                EQ=EQ,scaling=scaling))
     elif OD:
         model.data = type('data',(object,),dict(A=A,b_obs=b_obs,x_true=x_true,
-                                                T=T,d=d_obs,sparse=sparse,
-                                                alpha=alpha))
+                                                T=T,d=d_obs,sparse=sparse,EQ=EQ,
+                                                alpha=alpha,scaling=scaling))
 
     return model
 

@@ -17,10 +17,14 @@ def getX(A):
     x_ans = list(chain(*[x[1] for x in x_ans]))
     return x_ans
 
-def error(trace,A,x_true,b_obs):
+def error(trace,A,x_true,b_obs,scaling,output=None):
+    if output is None:
+        output = {}
     x_blocks = None
     for varname in sorted(trace.varnames):
         # flatten the trace and normalize
+        if trace.get_values(varname).shape[1] == 0:
+            continue
         x_block = np.array([x/sum(x) for x in trace.get_values(varname)])
         if x_blocks is not None:
             x_blocks = np.hstack((x_blocks, x_block))
@@ -28,9 +32,30 @@ def error(trace,A,x_true,b_obs):
             x_blocks = x_block
     # compute link flow and route flow error
     n = x_blocks.shape[0]
-    error_b = np.linalg.norm(A.dot(x_blocks.T) - np.tile(b_obs,(n,1)).T,axis=0)
-    error_x = np.linalg.norm(np.tile(x_true,(n,1)).T-x_blocks.T,axis=0)
-    return error_b, error_x
+
+    b = A.dot(x_blocks.T)
+    error_b = 0.5 * np.linalg.norm(b - np.tile(b_obs,(n,1)).T,axis=0) ** 2
+
+    x_true_block = np.tile(x_true,(n,1)).T
+    x_diff = x_true_block-x_blocks.T
+
+    scaling_block = np.tile(scaling,(n,1)).T
+    x_diff_scaled = scaling_block * x_diff
+    x_true_scaled = scaling_block * x_true_block
+    dist_from_true = np.max(x_diff_scaled,axis=0)
+
+    output['incorrect x entries'] = np.bincount(np.where(x_diff > 1e-3)[1])
+    per_flow = np.sum(x_diff_scaled, axis=0) / np.sum(x_true_scaled, axis=0)
+    output['percent flow allocated incorrectly'] = per_flow
+    output['max|f * (x-x_true)|'] = dist_from_true
+
+    error_x = 0.5 * np.linalg.norm(x_diff,axis=0) ** 2
+    output['error_x'] = error_x
+    output['error_b'] = error_b
+
+    import ipdb
+    ipdb.set_trace()
+    return error_b, error_x, output
 
 def sample(A,iters=100,logp=[],errors_b=[],errors_x=[]):
     for i in range(iters):
@@ -80,7 +105,10 @@ def MCMC(model):
     with model:
         n = 6000
         START = time.time()
-        start = pm.find_MAP()
+        try:
+            start = pm.find_MAP()
+        except AssertionError:
+            return model, {'error':'AssertionError in pm.find_MAP()'}
         print 'Time to initialize: %ds' % (time.time()-START)
 
         START = time.time()
@@ -95,12 +123,13 @@ def MCMC(model):
         # trace = pm.sample(n,pm.HamiltonianMC(),start)
         # print 'Time to sample (HMC): %ds' % (time.time()-START)
 
-        error_b, error_x = error(trace,model.data.A,model.data.x_true,model.data.b_obs)
+        error_b, error_x, output = error(trace,model.data.A,model.data.x_true,
+                                 model.data.b_obs,model.data.scaling)
 
-        fig = pm.traceplot(trace)
-        plot(error_b,error_x)
+        # fig = pm.traceplot(trace)
+        # plot(error_b,error_x)
         # plt.show()
-    return trace
+    return model, output
 
 if __name__ == "__main__":
     fname = 'data/2_3_3_1_20140421T151732_1_small_graph_OD_dense.mat'
