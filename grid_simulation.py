@@ -109,11 +109,13 @@ def MCMC(model):
             start = pm.find_MAP()
         except AssertionError:
             return model, {'error':'AssertionError in pm.find_MAP()'}
-        print 'Time to initialize: %ds' % (time.time()-START)
+        init_time = time.time()-START
+        print 'Time to initialize: %ds' % (init_time)
 
         START = time.time()
         trace = pm.sample(n,pm.Metropolis(),start)
-        print 'Time to sample (MH): %ds' % (time.time()-START)
+        duration = time.time()-START
+        print 'Time to sample (MH): %ds' % (duration)
 
         # START = time.time()
         # trace = pm.sample(n,pm.Slice(),start)
@@ -129,7 +131,7 @@ def MCMC(model):
         # fig = pm.traceplot(trace)
         # plot(error_b,error_x)
         # plt.show()
-    return model, trace, output
+    return model, trace, init_time, duration
 
 if __name__ == "__main__":
     fname = 'data/2_3_3_1_20140421T151732_1_small_graph_OD_dense.mat'
