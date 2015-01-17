@@ -15,6 +15,18 @@ def dot(a,b):
 def array(x):
     return np.atleast_1d(np.squeeze(np.array(x)))
 
+def has_OD(data,OD):
+    return OD and 'T' in data and 'd' in data and data['T'] is not None and \
+           data['d'] is not None and data['T'].size > 0 and data['d'].size > 0
+
+def has_CP(data,CP):
+    return CP and 'U' in data and 'f' in data and data['U'] is not None and \
+           data['f'] is not None and data['U'].size > 0 and data['f'].size > 0
+
+def has_LP(data,LP):
+    return LP and 'V' in data and 'g' in data and data['V'] is not None and \
+           data['g'] is not None and data['V'].size > 0 and data['g'].size > 0
+
 def generate_route_flows_from_incidence_matrix(M,alpha=1):
     """
     Generate blocks of route flows/splits (x) from an incidence matrix
@@ -51,31 +63,12 @@ def load_model(fname,sparse,full=False,OD=False,CP=False):
     data = loadmat(fname)
     return create_model(data,sparse,full=full,OD=OD,CP=CP)
 
-def create_model(data,sparse,full=False,OD=False,CP=False,EQ='OD'):
+def create_model(AA,bb_obs,EQ,x_true,sparse=False):
+    output = {}
     # change variable names
     # sparse = True
 
-    if sparse == True:
-        alpha = 0.3
-    else:
-        alpha = 1
-
-    # Link-route
-    if full and 'A_full' in data and 'b_full' in data:
-        A, b_obs = data['A_full'], data['b_full'].squeeze()
-    else:
-        A, b_obs = data['A'], data['b'].squeeze()
-
-    # OD-route
-    if OD and 'T' in data and 'd' in data:
-        T,d_obs = data['T'], data['d'].squeeze()
-    # Cellpath-route
-    if CP and 'U' in data and 'f' in data:
-        U,f_obs = data['U'], data['f'].squeeze()
-
-    # Route flows
-    # TODO need to distinguish between route split and route flows here
-    x_true = data['x_true'].squeeze()
+    alpha = 0.3 if sparse else 1
 
     # construct graphical model
     # -----------------------------------------------------------------------------
@@ -88,50 +81,18 @@ def create_model(data,sparse,full=False,OD=False,CP=False,EQ='OD'):
         # Dirichlet distribution doesn't give values that sum to 1 (continuous distribution), so
         # instead we normalize draws from a Gamma distribution
         # CAUTION x_pri is route splits
-        if EQ=='OD' and OD:
-            N, M = T, U
-        elif EQ=='CP' and CP:
-            N, M = U, T
-
-        scaling = array(diags([N.dot(x_true)],[0]).dot(N).sum(axis=0))
-        nz = scaling.nonzero()[0]
-        z = np.where(scaling == 0)[0]
-        x_pri = array(generate_route_flows_from_incidence_matrix(N[:,nz],
-                                                            alpha=alpha))
-        scaling = scaling[nz]
+        x_pri = array(generate_route_flows_from_incidence_matrix(EQ,alpha=alpha))
 
         # construct skinny normal distributions with observations
-        # mus = np.array([dot(a,x_pri) for a in A])
-        Dx = diags([scaling],[0])
-        Ascale, Mscale = Dx.dot(A[:,nz].T).T, Dx.dot(M[:,nz].T).T
-        # Dx = diags([x_true],[0])
-        # Ascale, Uscale = Dx.dot(A.T).T, Dx.dot(U.T).T
         #FIXME sparse dot product (i.e. Mscale.dot(x_pri)) gives error:
         # TypeError: no supported conversion for types: (dtype('float64'), dtype('O'))
-        mus_b, mus_m = Ascale.dot(x_pri), Mscale.todense().dot(x_pri)
-        b = [Normal('b%s' % i, mu=mu, tau=ivar, observed=obsi) for \
-             (i,(mu,obsi)) in enumerate(zip(mus_b,b_obs))]
-
-        if EQ=='OD' and OD:
-            f = [Normal('f%s' % i, mu=mu, tau=ivar, observed=obsi) for \
-                 (i,(mu,obsi)) in enumerate(zip(array(mus_m),f_obs))]
-        elif EQ=='CP' and CP:
-            d = [Normal('f%s' % i, mu=mu, tau=ivar, observed=obsi) for \
-                 (i,(mu,obsi)) in enumerate(zip(array(mus_m),d_obs))]
+        mus_bb = array(AA.todense().dot(x_pri))
+        bb = [Normal('b%s' % i, mu=mu, tau=ivar, observed=obsi) for \
+             (i,(mu,obsi)) in enumerate(zip(mus_bb,bb_obs))]
 
         print 'Time to build model: %ds' % (time.time()-START)
 
-    if OD and CP:
-        model.data = type('data',(object,),dict(A=A,b_obs=b_obs,x_true=x_true,
-                                                T=T,d=d_obs,U=U,f=f_obs,
-                                                sparse=sparse,alpha=alpha,
-                                                EQ=EQ,scaling=scaling))
-    elif OD:
-        model.data = type('data',(object,),dict(A=A,b_obs=b_obs,x_true=x_true,
-                                                T=T,d=d_obs,sparse=sparse,EQ=EQ,
-                                                alpha=alpha,scaling=scaling))
-
-    return model
+    return model,alpha,x_pri
 
 if __name__ == "__main__":
     import argparse

@@ -123,13 +123,13 @@ def MCMC(model):
         # trace = pm.sample(n,pm.HamiltonianMC(),start)
         # print 'Time to sample (HMC): %ds' % (time.time()-START)
 
-        error_b, error_x, output = error(trace,model.data.A,model.data.x_true,
-                                 model.data.b_obs,model.data.scaling)
+        # error_b, error_x, output = error(trace,model.data.A,model.data.x_true,
+        #                          model.data.b_obs,model.data.scaling)
 
         # fig = pm.traceplot(trace)
         # plot(error_b,error_x)
         # plt.show()
-    return model, output
+    return model, trace, output
 
 if __name__ == "__main__":
     fname = 'data/2_3_3_1_20140421T151732_1_small_graph_OD_dense.mat'
